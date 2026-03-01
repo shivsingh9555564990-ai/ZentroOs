@@ -23,7 +23,7 @@ export default function ProfileScreen({ user, onLogout }: ProfileScreenProps) {
 
   const initials = displayUser.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
   const memberSince = new Date(displayUser.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-  const isGoogle = displayUser.avatar ? true : false;
+  const isGoogle = !!displayUser.avatar;
 
   const handleSaveName = async () => {
     if (newName.trim().length >= 2) {
