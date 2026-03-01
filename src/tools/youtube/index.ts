@@ -1,1 +1,1 @@
-export const youtubeTools = {};
+export { getToolsByPlatform } from '../toolConfig';
