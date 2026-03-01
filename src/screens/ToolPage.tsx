@@ -200,4 +200,4 @@ export default function ToolPage() {
       </div>
     </motion.div>
   );
-          }
+}
