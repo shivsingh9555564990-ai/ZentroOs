@@ -1,49 +1,37 @@
-export const config = {
-  runtime: 'edge',
-};
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
-export default async function handler(request: Request) {
-  if (request.method === 'OPTIONS') {
-    return new Response(null, {
-      status: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
-      },
-    });
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // CORS
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
   }
 
-  if (request.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
-      headers: { 'Content-Type': 'application/json' },
-    });
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   const apiKey = process.env.OPENROUTER_API_KEY;
 
   if (!apiKey) {
-    return new Response(
-      JSON.stringify({ error: 'API key not configured. Set OPENROUTER_API_KEY in Vercel environment variables.' }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
+    return res.status(500).json({
+      error: 'OPENROUTER_API_KEY not set in Vercel environment variables.',
+    });
   }
 
   try {
-    const body = await request.json();
-    const { model, messages, max_tokens, temperature } = body;
+    const { model, messages, max_tokens, temperature } = req.body || {};
 
-    if (!model || !messages) {
-      return new Response(
-        JSON.stringify({ error: 'Missing model or messages' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+    if (!model || !messages || !Array.isArray(messages)) {
+      return res.status(400).json({ error: 'Missing model or messages.' });
     }
 
-    const response = await fetch(OPENROUTER_URL, {
+    const orRes = await fetch(OPENROUTER_URL, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
@@ -55,55 +43,81 @@ export default async function handler(request: Request) {
         model,
         messages,
         max_tokens: max_tokens || 1000,
-        temperature: temperature ?? 0.8,
+        temperature: temperature ?? 0.7,
+        stream: false,
       }),
     });
 
-    const data = await response.json();
+    const rawText = await orRes.text();
 
-    if (!response.ok) {
-      const errMsg = data?.error?.message || `OpenRouter error ${response.status}`;
-      return new Response(
-        JSON.stringify({ error: errMsg, status: response.status }),
-        { status: response.status, headers: { 'Content-Type': 'application/json' } }
-      );
+    if (!orRes.ok) {
+      let errMsg = `OpenRouter error ${orRes.status}`;
+      try {
+        const errData = JSON.parse(rawText);
+        errMsg = errData?.error?.message || errData?.error || errMsg;
+      } catch {}
+      return res.status(orRes.status).json({ error: errMsg });
+    }
+
+    let data;
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      return res.status(502).json({ error: 'Invalid JSON from OpenRouter.' });
     }
 
     if (data.error) {
-      return new Response(
-        JSON.stringify({ error: data.error.message || 'Model error' }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
+      return res.status(400).json({
+        error: data.error.message || data.error.type || 'Model returned error.',
+      });
     }
 
-    const content = data.choices?.[0]?.message?.content;
+    // Try multiple response paths
+    let content = '';
 
-    if (!content?.trim()) {
-      return new Response(
-        JSON.stringify({ error: 'Model returned empty response' }),
-        { status: 502, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        result: content.trim(),
-        model: data.model || model,
-      }),
-      {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        },
+    // Path 1: Standard chat completion
+    if (data.choices && data.choices.length > 0) {
+      const choice = data.choices[0];
+      // Path 1a: message.content (most common)
+      if (choice.message && choice.message.content) {
+        content = choice.message.content;
       }
-    );
+      // Path 1b: text (completion format)
+      else if (choice.text) {
+        content = choice.text;
+      }
+      // Path 1c: delta.content (streaming leftover)
+      else if (choice.delta && choice.delta.content) {
+        content = choice.delta.content;
+      }
+    }
+
+    // Path 2: Direct output field
+    if (!content && data.output) {
+      content = typeof data.output === 'string' ? data.output : JSON.stringify(data.output);
+    }
+
+    // Path 3: Direct response field
+    if (!content && data.response) {
+      content = typeof data.response === 'string' ? data.response : JSON.stringify(data.response);
+    }
+
+    content = (content || '').trim();
+
+    if (!content) {
+      return res.status(502).json({
+        error: `Model "${model}" returned empty content. This model may not support chat. Try a different model.`,
+        debug: JSON.stringify(data).slice(0, 300),
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      result: content,
+      model: data.model || model,
+    });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Internal server error';
-    return new Response(
-      JSON.stringify({ error: message }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
+    const message = err instanceof Error ? err.message : 'Server error';
+    return res.status(500).json({ error: message });
   }
 }
