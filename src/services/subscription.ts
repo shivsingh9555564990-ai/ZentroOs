@@ -1,1 +1,3 @@
-export const subscriptionService = {};
+export const subscriptionService = {
+  getCurrentPlan: () => 'free',
+};
