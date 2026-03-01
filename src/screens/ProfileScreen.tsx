@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, LogOut, User, Mail, Calendar, Shield, ChevronRight, Sparkles, Pencil, Check, X, Bell, Moon, Vibrate, Save, Minimize2, Globe } from 'lucide-react';
+import { ArrowLeft, LogOut, User, Mail, Calendar, Shield, ChevronRight, Sparkles, Pencil, Check, X, Bell, Moon, Vibrate, Save, Minimize2, Globe, Cpu } from 'lucide-react';
 import { authService } from '../services/auth';
 import type { User as UserType, AppSettings } from '../services/auth';
 
@@ -24,6 +24,7 @@ export default function ProfileScreen({ user, onLogout }: ProfileScreenProps) {
   const initials = displayUser.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
   const memberSince = new Date(displayUser.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   const isGoogle = !!displayUser.avatar;
+  const isGuest = displayUser.id.startsWith('guest_');
 
   const handleSaveName = async () => {
     if (newName.trim().length >= 2) {
@@ -57,6 +58,10 @@ export default function ProfileScreen({ user, onLogout }: ProfileScreenProps) {
               <ArrowLeft size={18} className="text-white" />
             </motion.button>
             <h1 className="text-lg font-bold text-white tracking-tight flex-1">Profile</h1>
+            {isGuest && (
+              <span className="text-[10px] font-bold px-2 py-1 rounded-lg"
+                style={{ background: 'rgba(16,185,129,0.1)', color: '#10B981', border: '1px solid rgba(16,185,129,0.2)' }}>👤 Guest</span>
+            )}
             {isGoogle && (
               <span className="text-[10px] font-bold px-2 py-1 rounded-lg"
                 style={{ background: 'rgba(66,133,244,0.1)', color: '#4285F4', border: '1px solid rgba(66,133,244,0.2)' }}>Google</span>
@@ -103,6 +108,28 @@ export default function ProfileScreen({ user, onLogout }: ProfileScreenProps) {
             <InfoRow icon={<Mail size={15} />} label="Email" value={displayUser.email} />
             <InfoRow icon={<Calendar size={15} />} label="Member Since" value={memberSince} />
             <InfoRow icon={<Shield size={15} />} label="Plan" value="Free" badge="Upgrade" />
+          </motion.div>
+
+          {/* AI Engine Status */}
+          <motion.div className="mb-6"
+            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28 }}>
+            <p className="text-[11px] font-semibold text-text-secondary uppercase tracking-widest mb-3 px-1">AI Engine</p>
+            <div className="rounded-[20px] px-4 py-4 flex items-center gap-3"
+              style={{ background: 'rgba(17,24,39,0.5)', backdropFilter: 'blur(20px)', border: '1px solid rgba(16,185,129,0.15)' }}>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center"
+                style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)' }}>
+                <Cpu size={18} className="text-emerald-400" />
+              </div>
+              <div className="flex-1">
+                <p className="text-[13px] text-white font-semibold">Server-Side AI</p>
+                <p className="text-[11px] text-text-secondary">Powered by OpenRouter · Secure backend</p>
+              </div>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg"
+                style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.15)' }}>
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-[10px] text-emerald-400 font-bold">Active</span>
+              </div>
+            </div>
           </motion.div>
 
           <motion.div className="mb-6"
@@ -195,7 +222,7 @@ export default function ProfileScreen({ user, onLogout }: ProfileScreenProps) {
             ) : (
               <div className="rounded-2xl p-5" style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)' }}>
                 <p className="text-sm text-white font-semibold mb-1">Sign out?</p>
-                <p className="text-xs text-text-secondary mb-4">You'll need to sign in again to access your tools.</p>
+                <p className="text-xs text-text-secondary mb-4">You'll need to sign in again.</p>
                 <div className="flex gap-3">
                   <button onClick={() => setShowLogout(false)}
                     className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-text-secondary"
@@ -209,7 +236,7 @@ export default function ProfileScreen({ user, onLogout }: ProfileScreenProps) {
           </motion.div>
 
           <div className="text-center mb-6">
-            <p className="text-[11px] text-text-secondary/40">CreatorOS v1.0 • Built with ⚡</p>
+            <p className="text-[11px] text-text-secondary/40">ZentroOS v1.0 • Built with ⚡</p>
           </div>
           <div className="h-20 safe-area-bottom" />
         </div>
