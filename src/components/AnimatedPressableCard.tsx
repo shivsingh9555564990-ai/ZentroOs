@@ -11,26 +11,20 @@ interface AnimatedPressableCardProps {
   delay?: number;
 }
 
-export default function AnimatedPressableCard({ 
-  children, 
-  className, 
+export default function AnimatedPressableCard({
+  children, className,
   glowColor = 'rgba(168,85,247,0.15)',
   borderGlowColor = 'rgba(168,85,247,0.25)',
-  onTap,
-  delay = 0 
+  onTap, delay = 0,
 }: AnimatedPressableCardProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ 
-        duration: 0.5, 
-        delay,
-        ease: [0.25, 0.46, 0.45, 0.94]
-      }}
+      transition={{ duration: 0.5, delay, ease: [0.25, 0.46, 0.45, 0.94] }}
       whileTap={{ scale: 0.97, transition: { duration: 0.1 } }}
       whileHover={{ y: -2, transition: { duration: 0.2 } }}
-      onTap={onTap}
+      onClick={onTap}
       className={cn(
         'relative rounded-[20px] overflow-hidden cursor-pointer select-none',
         'active:brightness-90 transition-[filter] duration-100',
@@ -46,9 +40,7 @@ export default function AnimatedPressableCard({
     >
       <motion.div
         className="absolute inset-0 opacity-0 pointer-events-none"
-        style={{
-          background: `radial-gradient(circle at center, ${glowColor} 0%, transparent 70%)`
-        }}
+        style={{ background: `radial-gradient(circle at center, ${glowColor} 0%, transparent 70%)` }}
         whileTap={{ opacity: 1, transition: { duration: 0.15 } }}
       />
       {children}
